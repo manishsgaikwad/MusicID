@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+<item android:id="@+id/editMeta"
+        android:title="Edit"
+        android:icon="@drawable/ic_mode_edit_white_36dp"
+        app:showAsAction="always|withText"
+        android:orderInCategory="1"
+    />
+    <item android:id="@+id/downloadMeta"
+        android:title="Download MetaData"
+        android:icon="@drawable/ic_file_download_white_36dp"
+        app:showAsAction="ifRoom|withText"
+        android:orderInCategory="2"
+        />
+</menu>

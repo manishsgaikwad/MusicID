@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#000000</color>
+    <color name="colorPrimaryDark">#000000</color>
+    <color name="colorAccent">#42c99e</color>
+
+    <color name="translucentStatusBarColor">#2e000000</color>
+
+    <color name="light_font">#FBFBFB</color>
+    <color name="text_shadow">#7F000000</color>
+
+    <color name="black_overlay">#66000000</color>
+    <color name="material_red_400">#EF5350</color>
+    <color name="accent">#DD2C00</color>
+</resources>

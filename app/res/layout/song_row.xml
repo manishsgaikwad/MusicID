@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<RelativeLayout android:layout_width="match_parent"
+
+    android:layout_height="80dp"
+    android:background="?android:attr/selectableItemBackground"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical">
+
+
+
+
+    <ImageView
+        android:layout_width="@dimen/list_item_icon_width"
+        android:layout_height="match_parent"
+        android:layout_alignParentLeft="true"
+        android:layout_centerVertical="true"
+        android:scaleType="fitXY"
+        android:id="@+id/albumart"
+
+        />
+
+    <TextView
+        android:id="@+id/filename"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:layout_toRightOf="@id/albumart"
+        android:gravity="left|top"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:layout_marginTop="5dp"
+        android:ellipsize="marquee"
+        />
+
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/artist"
+            android:layout_below="@+id/filename"
+            android:layout_alignStart="@+id/filename"
+            android:layout_marginTop="15dp"
+            android:maxLines="1"
+            />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/duration"
+        android:layout_below="@+id/filename"
+        android:layout_alignParentEnd="true"
+        android:gravity="bottom"
+        android:layout_marginTop="35dp"
+        android:layout_marginRight="5dp"
+        android:textStyle="italic"
+        />
+
+   </RelativeLayout>
