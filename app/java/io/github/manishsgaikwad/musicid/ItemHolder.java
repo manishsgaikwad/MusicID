@@ -50,10 +50,10 @@ public class ItemHolder extends RecyclerView.ViewHolder  {
             textView2.setText(item.getArtist());
             textView3.setText(TimeUnit.MILLISECONDS.toMinutes(duration) + ":" + (TimeUnit.MILLISECONDS.toSeconds(duration) - TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(duration))));
         if(item.albumartUri == null){
-            Picasso.with(context).load(R.drawable.default_art).into(imageView);
+            Picasso.with(context).load(R.drawable.default_art).fit().into(imageView);
         }
         else {
-            Picasso.with(context).load(item.albumartUri).error(R.drawable.default_art).into(imageView);
+            Picasso.with(context).load(item.albumartUri).fit().error(R.drawable.default_art).into(imageView);
         }
 
 

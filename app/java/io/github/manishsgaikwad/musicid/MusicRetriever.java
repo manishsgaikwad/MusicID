@@ -73,6 +73,7 @@ public class MusicRetriever {
 
        // Log.i(TAG, "Title column index: " + String.valueOf(titleColumn));
         //Log.i(TAG, "ID column index: " + String.valueOf(titleColumn));
+        Log.i("Path:",cur.getString(dataPathColumn));
 
         final  Uri sArtworkUri = Uri.parse("content://media/external/audio/albumart");
 
@@ -84,15 +85,16 @@ public class MusicRetriever {
 
             Uri artworkUri = ContentUris.withAppendedId(sArtworkUri,cur.getLong(albumIdColumn));
 
-            mItems.add(new Item(
-                    cur.getLong(idColumn),
-                    cur.getString(artistColumn),
-                    cur.getString(titleColumn),
-                    cur.getString(albumColumn),
-                    cur.getLong(durationColumn),
-                    artworkUri,
-                    cur.getString(dataPathColumn),
-                    cur.getLong(albumIdColumn)));
+
+                mItems.add(new Item(
+                        cur.getLong(idColumn),
+                        cur.getString(artistColumn),
+                        cur.getString(titleColumn),
+                        cur.getString(albumColumn),
+                        cur.getLong(durationColumn),
+                        artworkUri,
+                        cur.getString(dataPathColumn),
+                        cur.getLong(albumIdColumn)));
 
 
         } while (cur.moveToNext());

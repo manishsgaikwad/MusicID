@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -21,13 +22,11 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
 import android.widget.ProgressBar;
-import android.widget.Toast;
 
+import com.afollestad.materialdialogs.DialogAction;
 import com.afollestad.materialdialogs.GravityEnum;
 import com.afollestad.materialdialogs.MaterialDialog;
-
 import com.mikepenz.materialdrawer.Drawer;
 import com.mikepenz.materialdrawer.DrawerBuilder;
 import com.mikepenz.materialdrawer.model.DividerDrawerItem;
@@ -38,19 +37,19 @@ import com.squareup.picasso.Picasso;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
-import butterknife.Bind;
 import butterknife.ButterKnife;
 import jp.wasabeef.recyclerview.adapters.AlphaInAnimationAdapter;
 import permissions.dispatcher.NeedsPermission;
 import permissions.dispatcher.OnNeverAskAgain;
+import permissions.dispatcher.OnShowRationale;
+import permissions.dispatcher.PermissionRequest;
 import permissions.dispatcher.RuntimePermissions;
 
 
-
 @RuntimePermissions
-public class MainActivity extends AppCompatActivity implements SearchView.OnQueryTextListener { //implements RuntimePermissionListener {
-
+public class MainActivity extends AppCompatActivity implements SearchView.OnQueryTextListener {
 
     private RecyclerView rcv;
     private ItemAdapter adp;
@@ -84,7 +83,7 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
         }
 
         setContentView(R.layout.activity_main);
-        overridePendingTransition(R.anim.trans_left_in,R.anim.trans_left_out);
+        //overridePendingTransition(R.anim.trans_left_in,R.anim.trans_left_out);
         ButterKnife.bind(this);
         //supportRequestWindowFeature(Window.FEATURE_PROGRESS);
         progressBar = (ProgressBar)findViewById(R.id.progressbar);
@@ -97,8 +96,17 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
         //getSupportActionBar().setLogo(R.mipmap.ic_launcher);
          //toolbar.setSubtitle("Manish"); //getSupportActionBar().setTitle("");
 
+
+        if(Intent.ACTION_VIEW.equals(getIntent().getAction())){
+            Intent intent = new Intent(this,SongDetail.class);
+            intent.putExtra("IID","O");
+            intent.putExtra("File_Path",getIntent().getData().getPath());
+            startActivity(intent);
+        }
+
         mItems = new ArrayList<>();
         rcv = (RecyclerView)findViewById(R.id.rcv);
+
         rcv.setLayoutManager(new LinearLayoutManager(context));
 
         RecyclerView.ItemDecoration itemDecoration = new DividerItemDecoration(context, DividerItemDecoration.VERTICAL_LIST);
@@ -107,21 +115,17 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
 
 
        adp = new ItemAdapter(mItems);
+
         rcv.setAdapter(new AlphaInAnimationAdapter(adp));
         rcv.setHasFixedSize(true);
 
 
 
-                MainActivityPermissionsDispatcher.createSongListWithCheck(this);
-                createSongList();
 
-            // rcv.setAdapter(new AlphaInAnimationAdapter(adp));
-
-        //rcv.setHasFixedSize(true);
+               MainActivityPermissionsDispatcher.createSongListWithCheck(this);
 
 
-
-        //Drawer--------------------------------------------------------------------
+            //Side drawer code
             this.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -162,7 +166,7 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
 
                                     new PrimaryDrawerItem()
                                             .withName("Version")
-                                            .withDescription("1.0")
+                                            .withDescription("3.0.2")
                                             .withIcon(R.drawable.ic_info_black_18dp)
                                             .withIdentifier(305)
                                             .withSelectable(false)
@@ -179,7 +183,7 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
                                         //OpenSourceLicenses
                                         new MaterialDialog.Builder(context)
                                                 .title("OpenSourceLicenses:")
-                                                .content("1:Gracenote WebAPI\n2:com.android.support:appcompat-v7:25.0.1\n3:om.android.support:recyclerview-v7:25.0.1\n4:com.squareup.picasso:picasso:2.5.2\n5:jp.wasabeef:recyclerview-animators:2.2.5\n6:com.jakewharton:butterknife:7.0.1\n7:com.android.support:design:25.0.1\n8:com.github.hotchemi:permissionsdispatcher:2.2.1\n9:com.facebook.shimmer:shimmer:0.1.0@aar\n10:com.afollestad.material-dialogs:core:0.9.1.0\n11:com.mikepenz:materialdrawer:5.8.1@aar")
+                                                .content("1:com.android.support:appcompat-v7:25.0.1\n2:om.android.support:recyclerview-v7:25.0.1\n4:com.squareup.picasso:picasso:2.5.2\n5:jp.wasabeef:recyclerview-animators:2.2.5\n6:com.jakewharton:butterknife:7.0.1\n7:com.android.support:design:25.0.1\n8:com.github.hotchemi:permissionsdispatcher:2.2.1\n9:com.facebook.shimmer:shimmer:0.1.0@aar\n10:com.afollestad.material-dialogs:core:0.9.1.0\n11:com.mikepenz:materialdrawer:5.8.1@aar")
                                                 .positiveText("DISMISS")
                                                 .contentGravity(GravityEnum.START)
                                                 .show();
@@ -195,62 +199,76 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
                                 }
                             })
                             .build();
-
-                    ItemClickSupport.addTo(rcv).setOnItemClickListener(new ItemClickSupport.OnItemClickListener() {
-                        @Override
-                        public void onItemClicked(RecyclerView recyclerView, int position, View v) {
-                            albumArtUri = mItems.get(position).getAlbumartUri();
-                            //launchActivity(mItems.get(position),v);
-                            launchActivity(adp.getUpdatedItems().get(position),v);
-
-                        }
-                    });
-
-
-                    ItemClickSupport.addTo(rcv).setOnItemLongClickListener(new ItemClickSupport.OnItemLongClickListener() {
-                        @Override
-                        public boolean onItemLongClicked(RecyclerView recyclerView, int position, View v) {
-
-                            final File f = new File(adp.getUpdatedItems().get(position).getPath());
-
-                            new MaterialDialog.Builder(context)
-                                    .items("Share")
-                                    .itemsCallback(new MaterialDialog.ListCallback() {
-                                        @Override
-                                        public void onSelection(MaterialDialog dialog, View itemView, int position, CharSequence text) {
-                                            if(position==0) {
-                                                Uri uri = Uri.parse("file://" + f.getAbsolutePath());
-                                                Intent share = new Intent(Intent.ACTION_SEND);
-                                                share.putExtra(Intent.EXTRA_STREAM, uri);
-                                                share.setType("audio/*");
-                                                share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                                                context.startActivity(Intent.createChooser(share, "Share audio File"));
-                                            }
-
-
-                                        }
-                                    })
-                                    .show();
-                            return false;
-                        }
-                    });
-
-
                 }
             });
 
+        //Listeners for recycler view
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+
+
+
+                ItemClickSupport.addTo(rcv).setOnItemClickListener(new ItemClickSupport.OnItemClickListener() {
+                    @Override
+                    public void onItemClicked(RecyclerView recyclerView, int position, View v) {
+                        albumArtUri = mItems.get(position).getAlbumartUri();
+                        //launchActivity(mItems.get(position),v);
+                        launchActivity(adp.getUpdatedItems().get(position),v);
+
+                    }
+                });
+
+                ItemClickSupport.addTo(rcv).setOnItemLongClickListener(new ItemClickSupport.OnItemLongClickListener() {
+                    @Override
+                    public boolean onItemLongClicked(RecyclerView recyclerView, int position, View v) {
+
+                        final File f = new File(adp.getUpdatedItems().get(position).getPath());
+                        final String path = f.getAbsolutePath();
+                        new MaterialDialog.Builder(context)
+                                .items("Share","Delete")
+                                .itemsCallback(new MaterialDialog.ListCallback() {
+                                    @Override
+                                    public void onSelection(MaterialDialog dialog, View itemView, int position, CharSequence text) {
+                                        if(position==0) {
+                                            Uri uri = Uri.parse("file://" + f.getAbsolutePath());
+                                            Intent share = new Intent(Intent.ACTION_SEND);
+                                            share.putExtra(Intent.EXTRA_STREAM, uri);
+                                            share.setType("audio/*");
+                                            share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                            context.startActivity(Intent.createChooser(share, "Share audio File"));
+                                        }
+                                        if(position==1){
+                                            f.delete();
+                                            context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(path))));
+                                            createSongList();
+                                        }
+
+
+                                    }
+                                })
+                                .show();
+                        return false;
+                    }
+                });
+
+
+
+            }
+        }).start();
 
 
     }
 
 
-private void launchActivity(MusicRetriever.Item item , View v){
+private void launchActivity(MusicRetriever.Item item , View v) {
     Intent intent = new Intent(this, SongDetail.class);
-    intent.putExtra("io.github.manishsgaikwad.musicid",item);
+    intent.putExtra("IID","I");
+    intent.putExtra("io.github.manishsgaikwad.musicid", item);
     Picasso.with(this).invalidate(item.getAlbumartUri());
-    //ActivityOptionsCompat options = ActivityOptionsCompat.makeSceneTransitionAnimation(this,v,"transition_3");
-    Bundle bundleAnimations = ActivityOptionsCompat.makeCustomAnimation(getApplicationContext(),R.anim.animation,R.anim.animation2).toBundle();
-    ActivityCompat.startActivity(this,intent,bundleAnimations);
+    Bundle bundleAnimations = ActivityOptionsCompat.makeCustomAnimation(getApplicationContext(), R.anim.animation, R.anim.animation2).toBundle();
+    ActivityCompat.startActivity(this, intent, bundleAnimations);
+
 }
 
     @Override
@@ -262,27 +280,39 @@ private void launchActivity(MusicRetriever.Item item , View v){
 
 
     @NeedsPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-   // @AskPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-    public void createSongList(){
+      public void createSongList(){
+
+
+
         MusicRetriever musicRetriever = new MusicRetriever(getContentResolver(),this);
 
        PrepareMusicRetrieverTask prepareMusicRetrieverTask= new PrepareMusicRetrieverTask(musicRetriever,rcv,context,lastFirstVisiblePosition,progressBar,adp);
         prepareMusicRetrieverTask.execute(mItems);
 
+
         try {
-           mItems = prepareMusicRetrieverTask.get();
-            if(mItems.isEmpty()){
-                Toast.makeText(this,"No songs found. How boring!",Toast.LENGTH_LONG).show();
-                rcv.setVisibility(View.INVISIBLE);
-            }
+          mItems = prepareMusicRetrieverTask.get();
+
+
         }
-        catch (Exception e){
+        catch (NullPointerException e){
+            //e.printStackTrace();
+            rcv.setVisibility(View.INVISIBLE);
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
             e.printStackTrace();
         }
+
+
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+
+
+
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         MainActivityPermissionsDispatcher.onRequestPermissionsResult(this,requestCode,grantResults);
     }
@@ -313,6 +343,27 @@ private void launchActivity(MusicRetriever.Item item , View v){
         //Toast.makeText(this,"Go to app setting to grant storage permission.",Toast.LENGTH_LONG).show();
     }
 
+    @OnShowRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+    void showRationale(final PermissionRequest request){
+       new MaterialDialog.Builder(context)
+               .title("Need External Storage Permission")
+               .content("To show list of songs and to edit them.")
+               .positiveText("Okay")
+               .negativeText("Cancel")
+               .onPositive(new MaterialDialog.SingleButtonCallback() {
+                   @Override
+                   public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                       request.proceed();
+                   }
+               })
+               .onNegative(new MaterialDialog.SingleButtonCallback() {
+                   @Override
+                   public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                       request.cancel();
+                       System.exit(0);
+                   }
+               }).show();
+    }
 
 
     @Override
@@ -342,8 +393,20 @@ private void launchActivity(MusicRetriever.Item item , View v){
             Picasso.with(getApplicationContext()).invalidate(albumArtUri);
         }
 
-        createSongList();
+        //MainActivityPermissionsDispatcher.createSongListWithCheck(this);
+        //createSongList();
+       // Log.i("PERM",doesUserHavePermission()+"");
+        if(doesUserHavePermission()){
+            createSongList();
+        }
+
         //((LinearLayoutManager) rcv.getLayoutManager()).scrollToPosition(lastFirstVisiblePosition);
+    }
+
+    private boolean doesUserHavePermission()
+    {
+        int result = context.checkCallingOrSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        return result == PackageManager.PERMISSION_GRANTED;
     }
 
     @Override

@@ -1,6 +1,7 @@
 package io.github.manishsgaikwad.musicid;
 
 
+import android.animation.Animator;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.ContentUris;
@@ -10,17 +11,20 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.media.MediaPlayer;
 import android.media.MediaScannerConnection;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.annotation.RequiresApi;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -34,13 +38,19 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewAnimationUtils;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.afollestad.materialdialogs.DialogAction;
 import com.afollestad.materialdialogs.MaterialDialog;
+import com.getkeepsafe.taptargetview.TapTarget;
+import com.getkeepsafe.taptargetview.TapTargetSequence;
+import com.github.hiteshsondhi88.libffmpeg.FFmpeg;
+import com.github.hiteshsondhi88.libffmpeg.FFmpegExecuteResponseHandler;
 import com.squareup.picasso.Picasso;
 
 import org.jaudiotagger.audio.AudioFile;
@@ -130,71 +140,146 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
 
 
 
-    private static final String apiUrl = "insert api url";
+    private static final String apiUrl = "https://c64548121.web.cddbp.net/webapi/xml/1.0/";
     private static String userID;
-    private static final String clientID = "insert your api id";
+    private static final String clientID = "64548121-8795C19E5616F630BDA0EE857D224F5A";
 
     private String query=null;
+
     private String title;
     private String album;
     private String artist;
+    private String filePath;
+    private Uri albumArtUri;
+
     private Activity activity;
     private Context context;
     MetaDataDownloaderTask metaDataDownloaderTask = null;
-    private MediaPlayer mediaPlayer;
+    static private MediaPlayer mediaPlayer;
+
+    private FloatingActionButton floatingActionButton;
+    private Toolbar toolbar;
+     ProgressDialog pd;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_main2);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setEnterTransition(null);
+        }
+
+
         activity = this;
         context = this.getApplicationContext();
-        Toolbar toolbar = (Toolbar)findViewById(R.id.toolbar1);
+        toolbar = (Toolbar)findViewById(R.id.toolbar1);
+
         TagOptionSingleton.getInstance().setAndroid(true);
 
         ButterKnife.bind(this);
+        floatingActionButton = (FloatingActionButton)findViewById(R.id.fab);
 
-        Bundle bundle = getIntent().getExtras();
-        item = bundle.getParcelable("io.github.manishsgaikwad.musicid");
+
+        Intent intent = getIntent();
+
+        if(intent!=null){
+            String IID = intent.getExtras().getString("IID");
+            if(IID.equals("O"))
+            {
+                filePath=intent.getStringExtra("File_Path");
+                showSnackBar(filePath);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        TagOptionSingleton.getInstance().setAndroid(true);
+                        AudioFile audioFile;
+                        try {
+                            audioFile = AudioFileIO.read(new File(filePath));
+                            Tag tag = audioFile.getTag();
+                            title=tag.getFirst(FieldKey.TITLE);
+                            artist=tag.getFirst(FieldKey.ARTIST);
+                            album=tag.getFirst(FieldKey.ALBUM);
+                            albumArtUri=null;
+                            Bitmap bmp = BitmapFactory.decodeByteArray(tag.getFirstArtwork().getBinaryData(),0,tag.getFirstArtwork().getBinaryData().length);
+                            imageView.setImageBitmap(bmp);
+                            //Picasso.with(context).load("").error(R.drawable.default_art).into(imageView);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        /*
+                        try{
+                        Bitmap bmp = BitmapFactory.decodeByteArray(tag.getFirstArtwork().getBinaryData(),0,tag.getFirstArtwork().getBinaryData().length);
+                        imageView.setImageBitmap(bmp);}
+                        catch (Exception e){
+
+                        } */
+                    }
+                });
+
+            }
+            if(IID.equals("I"))
+            {
+                Bundle bundle = intent.getExtras();
+                item = bundle.getParcelable("io.github.manishsgaikwad.musicid");
+                filePath=item.getPath();
+                title = item.getTitle();
+                artist = item.getArtist();
+                album = item.getAlbum();
+                albumArtUri = item.getAlbumartUri();
+            }
+        }
+
+        imageView.post(new Runnable() {
+            @Override
+            public void run() {
+                initUi(title,album,artist,albumArtUri);
+            }
+        });
+
+
+
+
+        toolbar.inflateMenu(songdetails_menu);
 
         setSupportActionBar(toolbar);
 
         getSupportActionBar().setDisplayShowTitleEnabled(false);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-        //container.setDuration(100);
 
-      // getSupportActionBar().setBackgroundDrawable(getResources().getDrawable(R.drawable.toolbarbg));
 
-        title = item.getTitle();
-        artist = item.getArtist();
-        album = item.getAlbum();
-        final Uri albumArtUri = item.getAlbumartUri();
-        initUi(title,album,artist,albumArtUri);
-
-        okEdit2.setOnClickListener(new View.OnClickListener() {
+        //Circular save changes button code
+        this.runOnUiThread(new Runnable() {
             @Override
-            public void onClick(View v) {
+            public void run() {
+                okEdit2.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
 
-                try {
-                    writeMeta(item.getPath());
+                        try {
+                            writeMeta(filePath);
+                            writeMeta(filePath);
+
+                        } catch (Exception e){
+                            e.printStackTrace();
+                            Log.d("Error Writing Data","Error!");
+                            showSnackBar("Corrupted Tags!");
+                        }
+
+                        // okEdit2.setVisibility(View.GONE);
+                            showSnackBar("Done! All changes saved.");
+                        if(albumArtUri!=null)
+                            Picasso.with(getApplicationContext()).invalidate(albumArtUri);
+                        setETeditable(false);
+                        // okEdit2.setVisibility(View.GONE);
+                        //initUi(metaUpdated[0],metaUpdated[1],metaUpdated[2]);
+                    }
+                });
 
 
-                } catch (Exception e){
-                    e.printStackTrace();
-                    Log.d("Error Writing Data","Error!");
-                    showSnackBar("Corrupted Tags!");
-                }
-
-               // okEdit2.setVisibility(View.GONE);
-                showSnackBar("Done! All changes saved.");
-                Picasso.with(getApplicationContext()).invalidate(albumArtUri);
-                setETeditable(false);
-               // okEdit2.setVisibility(View.GONE);
-                //initUi(metaUpdated[0],metaUpdated[1],metaUpdated[2]);
             }
         });
-
 
 
 
@@ -214,41 +299,145 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
             }).start();
 
         } else {
-
           // Log.i("sharedPref",mSharedPreferences.getString("userID","error"));
             userID = mSharedPreferences.getString("userID","");
         }
 
 
-        final FloatingActionButton floatingActionButton = (FloatingActionButton)findViewById(R.id.fab);
+ new Thread(new Runnable() {
+     @Override
+     public void run() {
          mediaPlayer = new MediaPlayer();
-        try {
-            mediaPlayer.setDataSource(context,item.getURI());
-            mediaPlayer.prepare();
-        } catch (IOException e) {
-            e.printStackTrace();
+         try {
+             mediaPlayer.setDataSource(context,Uri.fromFile(new File(filePath)));
+             mediaPlayer.prepare();
+         } catch (IOException e) {
+             e.printStackTrace();
+         }
+
+
+         floatingActionButton.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View view) {
+                 try{
+                     if(mediaPlayer.isPlaying()){
+                         mediaPlayer.pause();
+                         floatingActionButton.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_play_arrow_white_24dp));
+                     }
+                     else {
+                         mediaPlayer.start();
+                         floatingActionButton.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_pause_white_24dp));
+                         showSnackBar("Now Playing: "+title);
+                     }
+                 }catch (Exception e){
+                     e.printStackTrace();
+                 }
+             }
+         });
+
+     }
+ }).start();
+
+        pd = new ProgressDialog(this);
+        pd.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        pd.setIndeterminate(true);
+        pd.setCancelable(false);
+        pd.setTitle("Please Wait");
+
+
+
+        //Check if file is MP3 or not
+       // Log.i("fileee",filePath);
+        final String extension = filePath.substring(filePath.lastIndexOf(".")+1);
+        if(extension.compareToIgnoreCase("mp3")!=0)
+        {
+            new MaterialDialog.Builder(this)
+                    .title("This is a "+extension+" file")
+                    .content("Only mp3 files can be edited. Do you want to convert it to mp3 to edit its tags?")
+                    .positiveText("Yes")
+                    .negativeText("No")
+                    .onPositive(new MaterialDialog.SingleButtonCallback() {
+                        @Override
+                        public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                            //code to convert file to mp3
+                            //AudioToMp3ConverterTask audioToMp3ConverterTask = new AudioToMp3ConverterTask(imageView.getContext(),filePath,pd);
+                           // audioToMp3ConverterTask.execute();
+                            //pd.show();
+                            convertToMp3(filePath,"Converting...");
+                           // pd.dismiss();
+                        }
+                    })
+                    .onNegative(new MaterialDialog.SingleButtonCallback() {
+                        @Override
+                        public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                            finish();
+                        }
+                    })
+                    .iconRes(R.drawable.ic_info_black_18dp)
+                    .cancelable(false)
+                    .show();
         }
 
+    runOnUiThread(new Runnable() {
+        @Override
+        public void run() {
+            final String PREFS_NAME = "MyPrefsFile";
 
-        floatingActionButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                         try{
-                            if(mediaPlayer.isPlaying()){
-                                mediaPlayer.pause();
-                                floatingActionButton.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_play_arrow_white_24dp));
-                            }
-                            else {
-                                mediaPlayer.start();
-                                floatingActionButton.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_pause_white_24dp));
-                                showSnackBar("Now Playing: "+item.getTitle());
-                            }
-                        }catch (Exception e){
-                            e.printStackTrace();
-                        }
-                          }
-        });
+            SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+
+            if (settings.getBoolean("my_first_time", true)) {
+                //the app is being launched for first time, do something
+                Log.d("Comments", "First time");
+
+                    try {
+                        // first time task
+                        Toast.makeText(context, "Click on the highlighted areas to know more", Toast.LENGTH_LONG).show();
+                        new TapTargetSequence(activity)
+                                .targets(
+                                        TapTarget.forToolbarMenuItem(toolbar, R.id.editMeta, "Edit Button!", "Use this button to start editing your music files.")
+                                                .dimColor(android.R.color.black)
+                                                .outerCircleColor(R.color.colorAccent)
+                                                .targetCircleColor(android.R.color.white)
+                                                .transparentTarget(false)
+                                                .textColor(android.R.color.black)
+                                                .cancelable(false),
+                                        TapTarget.forToolbarMenuItem(toolbar, R.id.downloadMeta, "Download Button!", "Use it to automatically do editing for you.")
+                                                .dimColor(android.R.color.black)
+                                                .outerCircleColor(R.color.colorAccent)
+                                                .targetCircleColor(android.R.color.white)
+                                                .transparentTarget(false)
+                                                .textColor(android.R.color.black)
+                                                .cancelable(false),
+                                        TapTarget.forToolbarMenuItem(toolbar, R.id.fixFile, "Fix Button!", "Use it to fix music files for which the changes are not saved. Don't worry, old files will be kept as it is.")
+                                                .dimColor(android.R.color.black)
+                                                .outerCircleColor(R.color.colorAccent)
+                                                .targetCircleColor(android.R.color.white)
+                                                .transparentTarget(false)
+                                                .textColor(android.R.color.black)
+                                                .cancelable(false)
+                                )
+                                .start();
+
+                    }
+                    catch (Exception e){
+                        e.printStackTrace();
+                    }
+                // record the fact that the app has been started at least once
+                settings.edit().putBoolean("my_first_time", false).commit();
+            }
+
+
+
+        }
+    });
+
+
+
+
     }
+
+
+
 
     private boolean isNetworkAvailable() {
         ConnectivityManager connectivityManager
@@ -257,13 +446,16 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
         return activeNetworkInfo != null && activeNetworkInfo.isConnected();
     }
 
+
+    //Fn() to initialize the UI elements...
     private void initUi(String title, String album, String artist, Uri uri) {
       appBarLayout.addOnOffsetChangedListener(this);
 
         toolbarHeaderView.bindTo(title, artist);
         floatHeaderView.bindTo(title,artist);
-        Picasso.with(this).load(uri).error(R.drawable.default_art).into(imageView);
-
+        if(uri!=null) {
+            Picasso.with(this).load(uri).error(R.drawable.default_art).into(imageView);
+        }
         //track_ET.setFocusableInTouchMode(true);
         setETeditable(false);
 
@@ -276,7 +468,7 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
                 try {
                     TagOptionSingleton.getInstance().setAndroid(true);
                     //TagOptionSingleton.isAndroid(true);
-                    AudioFile audioFile = AudioFileIO.read(new File(item.getPath()));
+                    AudioFile audioFile = AudioFileIO.read(new File(filePath));
                     Tag tag = audioFile.getTag();
                     genre_ET.setText(tag.getFirst(FieldKey.GENRE));
                 }catch (Exception e){
@@ -284,12 +476,9 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
                 }
             }
         });
-        try {
-            setPersonalizedColor(uri);
-        }
-        catch (IOException e){
-            e.printStackTrace();
-        }
+        if(uri!=null)
+        setPersonalizedColor(uri);
+
     }
 
     private void setETeditable(boolean val){
@@ -341,8 +530,13 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
         }catch (Exception e){
             e.printStackTrace();
         }
-        mediaPlayer.reset();
-        mediaPlayer.release();
+        try{
+            mediaPlayer.reset();
+            mediaPlayer.release();
+        }
+        catch (Exception e){}
+
+        supportFinishAfterTransition();
             this.finish();
         super.onBackPressed();
         overridePendingTransition(R.anim.trans_right_in,R.anim.trans_right_out);
@@ -359,6 +553,23 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
 
     public MusicRetriever.Item getItem(){
         return item;
+    }
+
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        try {
+            if(mediaPlayer.isPlaying()){
+                mediaPlayer.pause();
+                floatingActionButton.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_play_arrow_white_24dp));
+            }
+           // pd.dismiss();
+
+        }
+        catch (Exception e){
+
+        }
     }
 
     @Override
@@ -418,9 +629,32 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
                             }
                         })
                         .show();
-
-
                 break;
+
+            case R.id.fixFile:
+
+                new MaterialDialog.Builder(this)
+                        .content("Press 'Fix' to continue")
+                        .negativeText("Cancel")
+                        .positiveText("Fix")
+                        .onPositive(new MaterialDialog.SingleButtonCallback() {
+                            @Override
+                            public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                                convertToMp3(filePath,"Fixing...");
+                            }
+                        })
+                        .show();
+                break;
+
+            case android.R.id.home:
+
+                mediaPlayer.reset();
+                mediaPlayer.release();
+                supportFinishAfterTransition();
+               // overridePendingTransition(R.anim.trans_right_in,R.anim.trans_right_out);
+                return true;
+
+
         }
 
         return super.onOptionsItemSelected(item);
@@ -436,7 +670,6 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
         if(mAudioFile.getTag() != null){
         oldTag = mAudioFile.getTag();
         }
-        
         //Tag mTag = new ID3v23Tag();
         Tag mTag = new ID3v24Tag();
         //mAudioFile.setTag(new ID3v24Tag());
@@ -516,12 +749,14 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
             }
         }
         catch (NullPointerException e){
-            e.printStackTrace();
+           // e.printStackTrace();
         }
 
         //mAudioFile.commit();
     }
-        private  void showSnackBar(String message){
+
+
+    private  void showSnackBar(String message){
 
             Snackbar mSnackbar = Snackbar.make(findViewById(R.id.toolbar_header_view),message,Snackbar.LENGTH_LONG);
             TextView tv = (TextView) mSnackbar.getView().findViewById(android.support.design.R.id.snackbar_text);
@@ -535,6 +770,9 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
         Uri uri = Uri.fromFile(file);
         Intent scanFileIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, uri);
         getBaseContext().sendBroadcast(scanFileIntent);
+        MediaScannerConnection.scanFile(context,
+                new String[] { path },
+                new String[] {"audio/*"} , null);
     }
 
 
@@ -550,7 +788,7 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
         if(requestCode== READ_REQUEST_CODE && resultCode == Activity.RESULT_OK){
             if(data != null){
                 userSelectedImageUri = data.getData();
-                Log.i("Image uri",userSelectedImageUri.toString());
+               // Log.i("Image uri",userSelectedImageUri.toString());
                 Picasso.with(getApplicationContext()).load(userSelectedImageUri).into(imageView);
                 CHECK_NEW_ALBUM_ART = 1;
 
@@ -601,20 +839,53 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
         }
     }
     
-    public void setPersonalizedColor(Uri imageUri) throws IOException {
+    public void setPersonalizedColor(final Uri imageUri)  {
         try {
             if (imageUri != null) {
 
-                Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
+                final Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
                 if (bitmap != null) {
                     Palette.from(bitmap).generate(new Palette.PaletteAsyncListener() {
                         @Override
-                        public void onGenerated(Palette palette) {
-                            Palette.Swatch vibrant = palette.getVibrantSwatch();
+                        public void onGenerated(final Palette palette) {
+                            final Palette.Swatch vibrant = palette.getVibrantSwatch();
+
                             //Palette.Swatch something = palette.getDominantSwatch();
                             if (vibrant != null) {
-                                scrollView.setBackgroundColor(vibrant.getRgb());
+                                //scrollView.setBackgroundColor(vibrant.getRgb());
                                 //getSupportActionBar().setBackgroundDrawable(new ColorDrawable(something.getRgb()));
+
+
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+
+
+                                    scrollView.post(new Runnable() {
+                                        @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+                                        @Override
+                                        public void run() {
+                                            int cx = scrollView.getWidth()/2;
+                                            int cy = scrollView.getHeight()/2;
+                                            float finalRadius = (float)Math.hypot(cx,cy);
+                                            Animator anim = ViewAnimationUtils.createCircularReveal(scrollView,cx,cy,0,finalRadius);
+                                            scrollView.setBackgroundColor(vibrant.getRgb());
+                                            anim.setDuration(400);
+                                            anim.start();
+                                            /*
+                                            Window window = getWindow();
+
+                                            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+                                            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+                                            if(palette.getDarkVibrantSwatch()!=null) {
+                                                window.setStatusBarColor(palette.getDarkVibrantSwatch().getRgb());
+                                                }
+                                                */
+                                        }
+                                    });
+
+                                }
+                                else{
+                                    scrollView.setBackgroundColor(vibrant.getRgb());
+                                }
                             }
                         }
                     });
@@ -623,9 +894,10 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
                 }
             }
         }
-        catch (IOException e){
+        catch (Exception e){
             scrollView.setBackgroundColor(ContextCompat.getColor(context, R.color.colorAccent));
         }
+
     }
 
         //background task
@@ -647,7 +919,7 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
     public String register(){
             String request = "<QUERIES>\n" +
                     "  <QUERY CMD=\"REGISTER\">\n" +
-                    "    <CLIENT>insert your clientID here</CLIENT>\n" +
+                    "    <CLIENT>64548121-8795C19E5616F630BDA0EE857D224F5A</CLIENT>\n" +
                     "  </QUERY>\n" +
                     "</QUERIES>";
         String response = _httpPostRequest(apiUrl,request);
@@ -738,6 +1010,72 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
     }
 
 
+    private void convertToMp3(String filePath, final String message){
+        try{
+            String[] f = filePath.split("\\.");
+            final String converted_fPath = filePath.replace(f[f.length-1],"mp3");
+            File output = new File(Environment.getExternalStorageDirectory().getPath()+"/Converted Files");
+
+            if(!output.exists())
+                output.mkdir();
+
+            final String convertedFilePath = output+"/"+new File(converted_fPath).getName();
+           // Log.i("Converted file path@:",convertedFilePath);
+
+            final String [] cmd = new String[]{"-i",filePath,"-f","mp3",convertedFilePath};
+
+
+            FFmpeg.getInstance(context).execute(cmd, new FFmpegExecuteResponseHandler() {
+                @Override
+                public void onSuccess(String message) {
+                  //  Log.i("Converting","HO GAYA!@:"+convertedFilePath);
+                     Toast.makeText(context,"Done @: "+convertedFilePath,Toast.LENGTH_LONG).show();
+                     context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(convertedFilePath))));
+                }
+
+                @Override
+                public void onProgress(String message) {
+                   // Log.i("Converting","Ho raha hai!");
+                }
+
+                @Override
+                public void onFailure(String message) {
+                  //  Log.i("Converting","Nai Hua!(Failure): "+message);
+                }
+
+                @Override
+                public void onStart() {
+                    Toast.makeText(context,message,Toast.LENGTH_LONG).show();
+                    pd.setMessage(message);
+                    pd.show();
+                  //  Log.i("Converting","Shuru Hua!");
+                }
+
+                @Override
+                public void onFinish() {
+                    //scanMedia(Environment.getExternalStorageDirectory().getPath()+"/test.mp3");
+                   // Toast.makeText(context,"Done @: "+convertedFilePath,Toast.LENGTH_LONG).show();
+                   // context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(convertedFilePath))));
+                    pd.dismiss();
+                    try {
+                        if(new File(convertedFilePath).exists()) {
+                            Intent intent = new Intent(context, SongDetail.class);
+                            intent.putExtra("IID", "O");
+                            intent.putExtra("File_Path", convertedFilePath);
+                            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                            context.startActivity(intent);
+                        }
+                    }
+                    catch (Exception e){}
+                   // Log.i("Converting","Kahtam Ho gaya!@ "+convertedFilePath);
+                }
+            });
+        }
+        catch (Exception e){
+           // Log.i("Converting","Error!!!!!!!!!");
+            e.printStackTrace();
+        }
+    }
 
 
 }

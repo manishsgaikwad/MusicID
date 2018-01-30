@@ -43,23 +43,24 @@ public class PrepareMusicRetrieverTask extends AsyncTask<List<MusicRetriever.Ite
     protected void onPostExecute(List<MusicRetriever.Item> items) {
         progressBar.setVisibility(View.INVISIBLE);
         recyclerView.setVisibility(View.VISIBLE);
-            if(hasSongs()) {
+        try {
+            if (this.items.size() > 0) {
 
                 mItemAdapter.updateItems(this.items);
-               // recyclerView.setLayoutManager(new LinearLayoutManager(context));
-              //  mItemAdapter = new ItemAdapter(this.items);
-               // recyclerView.setAdapter(new AlphaInAnimationAdapter(mItemAdapter));
-               // recyclerView.setHasFixedSize(true);
+                // recyclerView.setLayoutManager(new LinearLayoutManager(context));
+                //  mItemAdapter = new ItemAdapter(this.items);
+                // recyclerView.setAdapter(new AlphaInAnimationAdapter(mItemAdapter));
+                // recyclerView.setHasFixedSize(true);
                 // mItemAdapter.updateItems(items);
                 // mItemAdapter.notifyDataSetChanged();
                 if (this.sP != 0) {
                     recyclerView.getLayoutManager().scrollToPosition(sP);
                 }
             }
-        else{
-                Toast.makeText(context,"No Songs Found",Toast.LENGTH_LONG).show();
-            }
-
+        }
+        catch (NullPointerException e){
+            Toast.makeText(context, "No Songs Found", Toast.LENGTH_LONG).show();
+        }
         super.onPostExecute(items);
     }
 
@@ -80,16 +81,14 @@ public class PrepareMusicRetrieverTask extends AsyncTask<List<MusicRetriever.Ite
 
     @Override
     protected void onPreExecute() {
-       recyclerView.setVisibility(View.INVISIBLE);
+       recyclerView.setVisibility(View.GONE);
+
+
 
 
         super.onPreExecute();
     }
 
-    private boolean hasSongs(){
-        if(!this.items.isEmpty()) return true;
 
-        return false;
-    }
 
 }

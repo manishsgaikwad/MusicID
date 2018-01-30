@@ -7,7 +7,6 @@ import android.view.ViewGroup;
 import android.widget.Filter;
 import android.widget.Filterable;
 
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +24,6 @@ class ItemAdapter extends RecyclerView.Adapter<ItemHolder> implements Filterable
     private View v;
 
     private List<MusicRetriever.Item> itemsCopy;
-
 
 
 
@@ -123,5 +121,6 @@ class ItemAdapter extends RecyclerView.Adapter<ItemHolder> implements Filterable
 
         return results;
     }
+
 
 }

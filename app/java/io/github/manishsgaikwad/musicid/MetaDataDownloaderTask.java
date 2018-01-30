@@ -1,11 +1,9 @@
 package io.github.manishsgaikwad.musicid;
 
+import android.app.DownloadManager;
 import android.app.ProgressDialog;
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.media.MediaScannerConnection;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -29,9 +27,7 @@ import org.xml.sax.InputSource;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.StringReader;
@@ -95,7 +91,7 @@ public class MetaDataDownloaderTask extends AsyncTask<Void,Void,Void> {
                 progressDialog.show();
 
         resultBuilder.title(result)
-                .content("Try changing the search parameters manually or check the internet connection of your device.")
+                .content("Try Again")
                 .contentGravity(GravityEnum.START)
                 .positiveText("DISMISS")
                 .iconRes(R.drawable.ic_error_outline_white_48dp)
@@ -154,6 +150,8 @@ public class MetaDataDownloaderTask extends AsyncTask<Void,Void,Void> {
                        // Log.i("Image url", imageUrl);
                         this.downloadedImageUrl = imageUrl;
 
+                        file_download(downloadedImageUrl);
+                        /*
                         File dir = new File(Environment.getExternalStorageDirectory()+"/CacheAlbumArt");
                         try{
                              URL url = new URL(downloadedImageUrl);
@@ -177,7 +175,7 @@ public class MetaDataDownloaderTask extends AsyncTask<Void,Void,Void> {
                                     new String[] { "image/jpeg" }, null);
                         }catch (Exception e){
                                 e.printStackTrace();
-                        }
+                        } */
                     }
 
                     NodeList nl2 = root.getElementsByTagName("TITLE");
@@ -234,7 +232,7 @@ public class MetaDataDownloaderTask extends AsyncTask<Void,Void,Void> {
 
         } catch (Exception e){
             result = "Oops! This is embarrassing";
-           resultBuilder.title(result)
+           resultBuilder.title("Error connecting to the server")
                    .show();
 
         }
@@ -297,7 +295,7 @@ public class MetaDataDownloaderTask extends AsyncTask<Void,Void,Void> {
                 "    </OPTION>\n" +
                 "    <OPTION>\n" +
                 "      <PARAMETER>COVER_SIZE</PARAMETER>\n" +
-                "      <VALUE>medium</VALUE>\n" +
+                "      <VALUE>xlarge</VALUE>\n" +
                 "    </OPTION>\n" +
                 "  </QUERY>\n" +
                 "</QUERIES>";
@@ -344,5 +342,29 @@ public class MetaDataDownloaderTask extends AsyncTask<Void,Void,Void> {
         return null;
     }
 
+    public void file_download(String Url){
+        File f = new File(Environment.getExternalStorageDirectory()+"/CacheAlbumArt");
+        if(!f.exists()){
+            f.mkdirs();
+        }
+        else {
+            File img_file = new File(Environment.getExternalStorageDirectory()+"/CacheAlbumArt/1.jpg");
+            if(img_file.exists()){
+                img_file.delete();
+            }
+        }
+
+
+        DownloadManager mDownloadManager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+
+        Uri downloadUri = Uri.parse(Url);
+        DownloadManager.Request request = new DownloadManager.Request(downloadUri);
+        request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE)
+                .setAllowedOverRoaming(true).setTitle("MusicID")
+                .setDescription("Downloading Album Art")
+                .setDestinationInExternalPublicDir("/CacheAlbumArt","1.jpg");
+
+        mDownloadManager.enqueue(request);
+    }
 
 }
