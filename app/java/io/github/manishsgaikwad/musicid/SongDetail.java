@@ -139,10 +139,10 @@ public class SongDetail extends AppCompatActivity implements AppBarLayout.OnOffs
     private Uri userSelectedImageUri = null;
 
 
-
-    private static final String apiUrl = "https://c64548121.web.cddbp.net/webapi/xml/1.0/";
+    //Enter your api keys
+    private static final String apiUrl = "*****************************";
     private static String userID;
-    private static final String clientID = "64548121-8795C19E5616F630BDA0EE857D224F5A";
+    private static final String clientID = "****************************";
 
     private String query=null;
 
